@@ -14,12 +14,17 @@ import (
 
 func main() {
 	fmt.Println("****** Starting generators, press enter to stop ******")
-	//declaring a new channel
+
 	file, err := os.Create("result.txt")
 	if err != nil {
 		log.Fatal("Cannot create file", err)
 	}
 	defer file.Close()
+
+	go func() {
+		defer close(done)
+		fmt.Scanln()
+	}()
 
 	var wg sync.WaitGroup
 	wg.Add(3)
@@ -31,17 +36,13 @@ func main() {
 	go generator2(c, done, &wg)
 	go write(c, done, file, &wg)
 
-	go func() {
-		defer close(done)
-		fmt.Scanln()
-	}()
-
 	wg.Wait()
 
 	fmt.Println("all done!")
 }
 
 func generator1(c chan string, done chan string, wg *sync.WaitGroup) {
+	defer wg.Done()
 	for i := 1; true; i++ {
 		select {
 		case <-done:
@@ -53,10 +54,10 @@ func generator1(c chan string, done chan string, wg *sync.WaitGroup) {
 			time.Sleep(1 * time.Second)
 		}
 	}
-	defer wg.Done()
 }
 
 func generator2(c chan string, done chan string, wg *sync.WaitGroup) {
+	defer wg.Done()
 	for {
 		select {
 		case <-done:
@@ -93,11 +94,10 @@ func generator2(c chan string, done chan string, wg *sync.WaitGroup) {
 			time.Sleep(1 * time.Second)
 		}
 	}
-	defer wg.Done()
 }
 
 func write(c chan string, done chan string, file *os.File, wg *sync.WaitGroup) {
-
+	defer wg.Done()
 	for {
 		select {
 		case <-done:
@@ -107,6 +107,4 @@ func write(c chan string, done chan string, file *os.File, wg *sync.WaitGroup) {
 			fmt.Fprintf(file, msg+"\n")
 		}
 	}
-
-	defer wg.Done()
 }
